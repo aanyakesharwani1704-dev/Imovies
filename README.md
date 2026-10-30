@@ -36,7 +36,18 @@ npm install
 npm run dev
 ```
 
-Edit `backend/.env` locally. Set `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_URL`, `PORT`, and `NODE_ENV`.
+Edit `backend/.env` locally. Required secrets/config:
+
+- `MONGO_URI`: real MongoDB Atlas SRV connection URI (`mongodb+srv://...`); placeholders and local MongoDB URIs are rejected.
+- `JWT_SECRET`: unique secret of at least 32 characters and at least 12 distinct characters.
+
+Optional/defaulted:
+
+- `JWT_EXPIRES_IN`: JWT lifetime; defaults to `7d`.
+- `PORT`: HTTP port; defaults to `5000` locally. Render supplies this in production.
+- `CLIENT_URL`: allowed frontend origins, comma-separated if using more than one; defaults to `http://localhost:5173` locally. Set it to the deployed Vercel origin in production.
+- `NODE_ENV`: set `development` locally and `production` on Render. Production mode suppresses stack traces in API error responses.
+- `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`: optional; only set temporarily when explicitly running the seed script to create the first admin.
 
 Never upload `.env` or share real credentials.
 
@@ -96,8 +107,39 @@ npm run build
 npm run lint
 ```
 
-## Deployment
+## Deployment: Render backend
 
-Deploy the backend to Render or a compatible Node.js host, the frontend to Vercel, and MongoDB to Atlas.
+1. In Render, choose **New → Web Service** and connect this GitHub repository.
+2. Set **Root Directory** to `backend`, **Runtime** to Node, **Build Command** to `npm install`, and **Start Command** to `npm start`. The backend binds to Render's `PORT` on `0.0.0.0`.
+3. Add these environment variables in the Render service's **Environment** settings:
+   - `MONGO_URI`: your production/development Atlas URI for the database this deployment is intended to use. Never put it in Git or a build command.
+   - `JWT_SECRET`: a newly generated, strong secret (see below).
+   - `CLIENT_URL`: the exact Vercel production origin, for example `https://your-project.vercel.app` (no trailing slash). Add custom domains as comma-separated origins if needed.
+   - `NODE_ENV`: `production`.
+   - `JWT_EXPIRES_IN`: optional; e.g. `7d`. `PORT` is provided by Render; do not hardcode it.
+4. In Render, set the health check path to `/api/health`. After deploy, open `https://<your-render-service>.onrender.com/api/health`; expect HTTP 200 and `database: "connected"`.
+5. If Atlas rejects the connection, add Render's outbound network access according to your Atlas/network policy. Do not solve this by exposing credentials or broadly opening a production database.
 
-Configure production environment variables in the hosting providers. Never upload `.env` files.
+Generate a random JWT secret locally in PowerShell and copy it to the clipboard without printing it. Paste it directly into Render's `JWT_SECRET` field:
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+$jwtSecret = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+Set-Clipboard -Value $jwtSecret
+Write-Output "A random JWT secret was copied to the clipboard. Paste it only into Render's JWT_SECRET setting."
+```
+
+Changing `JWT_SECRET` invalidates previously issued tokens. Do not add it to `.env.example`, Vercel, source code, or a GitHub commit.
+
+## Deployment: Vercel frontend
+
+1. In Vercel, choose **Add New → Project**, import the same repository, and set **Root Directory** to `frontend`.
+2. Use the Vite preset. Build command: `npm run build`. Output directory: `dist`. Install command can remain Vercel's default (`npm install`).
+3. Add `VITE_API_URL` in the Vercel project's **Environment Variables**, with the complete Render API base, for example `https://your-render-service.onrender.com/api`. Set it for Production and Preview as appropriate. This value is a public API URL, not a secret. Production builds do not silently fall back to localhost; if the variable is missing, API screens show a configuration error.
+4. Deploy or redeploy after setting the variable; Vite embeds `VITE_*` values at build time.
+5. Set Render's `CLIENT_URL` to the Vercel production origin. For preview deployments, add only the exact preview origins you intend to allow (comma-separated); then redeploy the backend.
+6. Confirm the Vercel homepage loads and directly visit a nested route such as `/movies`. `frontend/vercel.json` rewrites client-side routes to the Vite entry page.
+
+Do not run `npm run seed` against a production database unless you intentionally choose that database and have reviewed the seed behavior first. The application does not seed automatically on Render.

@@ -13,6 +13,7 @@ iMovies is a MERN movie-ticket booking application with public movie/theatre/sho
 - Frontend build: Passed
 - Frontend lint: Passed with non-blocking React advisory warnings
 - Live frontend-to-backend verification: Pending valid local Atlas settings
+- Deployment readiness: Render bind address and Vercel SPA routing configured; Render/Vercel environment values still need to be entered in hosting dashboards
 
 ## Completed Work
 
@@ -214,6 +215,21 @@ iMovies is a MERN movie-ticket booking application with public movie/theatre/sho
 ## Next Exact Development Step
 
 Configure a real Atlas URI and a unique valid JWT secret in the ignored `backend/.env`. Then run the backend, verify `/api/health` returns HTTP 200 with `database: "connected"`, run `npm run seed` twice and compare counts, and execute the full test checklist in `backend/API_TESTING.md`, including simultaneous booking requests and cancellation seat-release checks. Then validate the frontend user and admin flows against that live backend. No frontend features are intentionally deferred.
+
+## Render / Vercel Deployment Configuration
+
+- Updated backend startup to bind the Render-provided `PORT` on `0.0.0.0`
+- Improved JWT startup validation error to identify the hosting environment and state both the 32-character minimum and 12-distinct-character requirement
+- Added `frontend/vercel.json` SPA route rewrite so nested React Router paths resolve when opened directly
+- Frontend uses localhost API fallback only in Vite development; production builds require configured `VITE_API_URL` and show a useful configuration error otherwise
+- Documented Render root/build/start commands and required production environment settings, plus Vercel root/build/output/API URL setup in `README.md`
+- Production frontend preview was tested without `VITE_API_URL`; the movies screen reports the missing deployment setting and retry action, with no localhost fallback
+- Backend final tests passed: 12 passed, 0 failed; syntax check passed for 34 backend JavaScript files
+- Frontend production build passed; lint exited successfully with existing React advisory warnings
+- Vercel rewrite JSON parsed successfully
+- Runtime deployment is not verified: Render/Vercel dashboard settings and Atlas connectivity have not been tested or changed by this workspace task
+- Required on Render: `MONGO_URI`, strong unique `JWT_SECRET`, `CLIENT_URL` set to the deployed Vercel origin, `NODE_ENV=production`; `JWT_EXPIRES_IN` is optional and `PORT` is platform-provided
+- Required on Vercel: `VITE_API_URL` pointing to the Render API base URL ending in `/api`
 
 ## Important Configuration Notes
 

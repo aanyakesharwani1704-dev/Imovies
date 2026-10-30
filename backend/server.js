@@ -88,8 +88,8 @@ const startServer = async () => {
     const { port } = validateEnvironment();
     console.log('Connecting to configured MongoDB Atlas cluster...');
     await connectDB();
-    server = app.listen(port, () => {
-      console.log(`Backend server is running on http://localhost:${port}`);
+    server = app.listen(port, '0.0.0.0', () => {
+      console.log(`Backend server is listening on port ${port}.`);
     });
   } catch (error) {
     console.error('Server failed to start. Check backend/.env and MongoDB Atlas network access.');

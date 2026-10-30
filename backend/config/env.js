@@ -9,7 +9,7 @@ const validateEnvironment = () => {
     || new Set(secret).size < 12
     || /replace|example|placeholder|change.?me|your[_-]|secret123/i.test(secret)
   ) {
-    throw new Error('JWT_SECRET must be set to a unique secret of at least 32 characters in backend/.env.');
+    throw new Error('JWT_SECRET must be set in the hosting environment (or backend/.env locally) to a unique secret of at least 32 characters with at least 12 distinct characters.');
   }
 
   const port = Number(process.env.PORT || 5000);
